@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 from torch.serialization import load
 plt.switch_backend('agg')
 import matplotlib.ticker as ticker
+from torch.autograd import Variable
 
 import time
 import math
@@ -466,6 +467,63 @@ def evaluateAndShowAttention(input_sentence):
     print('input =', input_sentence)
     print('output =', ' '.join(output_words))
     showAttention(input_sentence, output_words, attentions)
+
+
+class SeqToSeqModel(nn.Module):
+    def __init__(
+        self, hidden_size, output_size, input_size, weights_dir, dropout_p=0.1,
+        max_length=10, pretrained=True
+    ):
+        super(AttnDecoderRNN, self).__init__()
+        self.hidden_size = hidden_size
+        self.output_size = output_size
+        self.input_size = input_size
+        self.dropout_p = dropout_p
+        self.max_length = max_length
+        self.pretrained = pretrained
+        self.weights_dir = weights_dir
+
+        self.encoder = EncoderRNN(self.input_size, self.hidden_size).\
+            load_state_dict(torch.load("%s/enc.pt" % self.weights_dir))\
+                if self.pretrained else EncoderRNN(self.input_size, self.hidden_size)
+        self.decoder = AttnDecoderRNN(self.hidden_size, self.output_size, dropout_p=self.dropout_p).\
+            load_state_dict(torch.load("%s/dec.pt" % self.weights_dir))\
+                if self.pretrained else AttnDecoderRNN(self.hidden_size, self.output_size, dropout_p=self.dropout_p)
+    
+
+    def forward(self, input):
+        encoder_hidden = self.encoder.initHidden()
+        encoder_outputs = torch.zeros(self.max_length, self.encoder.hidden_size)
+        input_length = input.size(0)
+        
+        for ei in range(input_length):
+            encoder_output, encoder_hidden = self.encoder(
+                input[ei], encoder_hidden)
+            encoder_outputs[ei] = encoder_output[0, 0]
+        
+        decoder_input = torch.tensor([[SOS_token]])
+        decoder_hidden = encoder_hidden
+
+        decoded_words = []
+        decoder_attentions = torch.zeros(self.max_length, self.max_length)
+
+        for di in range(self.max_length):
+            decoder_output, decoder_hidden, decoder_attention = self.decoder(
+                decoder_input, decoder_hidden, encoder_outputs)
+            decoder_attentions[di] = decoder_attention.data
+            topv, topi = decoder_output.data.topk(1)
+            if topi.item() == EOS_token:
+                decoded_words.append('<EOS>')
+                break
+            else:
+                decoded_words.append(topi.item())
+
+            decoder_input = topi.squeeze().detach()
+        
+        return Variable(torch.tensor(decoded_words).float(), requires_grad=True)
+
+
+
 
 
 
