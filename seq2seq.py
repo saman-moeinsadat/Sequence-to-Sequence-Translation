@@ -9,6 +9,7 @@ import torch
 import torch.nn as nn
 from torch import optim
 import torch.nn.functional as F
+import torch.optim.lr_scheduler as lr_scheduler
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -88,7 +89,7 @@ def readLangs(lang1, lang2, reverse=False):
     return input_lang, output_lang, pairs
 
 
-MAX_LENGTH = 10
+MAX_LENGTH = 8
 
 eng_prefixes = (
     "i am ", "i m ",
@@ -102,10 +103,10 @@ eng_prefixes = (
 
 def filterPair(p):
     return len(p[0].split(' ')) < MAX_LENGTH and \
-        len(p[1].split(' ')) < MAX_LENGTH and \
-        p[1].startswith(eng_prefixes)
+        len(p[1].split(' ')) < MAX_LENGTH 
+        # p[1].startswith(eng_prefixes)
 
-
+ 
 
 def filterPairs(pairs):
     return [pair for pair in pairs if filterPair(pair)]
@@ -167,7 +168,10 @@ class DecoderRNN(nn.Module):
 
 
 class AttnDecoderRNN(nn.Module):
-    def __init__(self, hidden_size, output_size, dropout_p=0.1, max_length=MAX_LENGTH):
+    def __init__(
+        self, hidden_size, output_size, dropout_p=0.1,
+        max_length=MAX_LENGTH
+    ):
         super(AttnDecoderRNN, self).__init__()
         self.hidden_size = hidden_size
         self.output_size = output_size
@@ -221,7 +225,10 @@ def tensorsFromPair(pair):
 teacher_forcing_ratio = 0.5
 
 
-def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion, max_length=MAX_LENGTH):
+def train(
+    input_tensor, target_tensor, encoder, decoder, encoder_optimizer,
+    decoder_optimizer, criterion, max_length=MAX_LENGTH
+):
     encoder_hidden = encoder.initHidden()
 
     encoder_optimizer.zero_grad()
@@ -289,7 +296,10 @@ def timeSince(since, percent):
     return '%s (- %s)' % (asMinutes(s), asMinutes(rs))
 
 
-def trainIters(encoder, decoder, pairs_train, pairs_eval, n_iters, print_every=1000, plot_every=100, learning_rate=0.01):
+def trainIters(
+    encoder, decoder, pairs_train, pairs_eval, n_iters,
+    print_every=1000, plot_every=100, learning_rate=0.01
+):
     start = time.time()
     plot_losses = []
     PATH = str((Path(__file__).parent).resolve())
@@ -299,6 +309,19 @@ def trainIters(encoder, decoder, pairs_train, pairs_eval, n_iters, print_every=1
 
     encoder_optimizer = optim.SGD(encoder.parameters(), lr=learning_rate)
     decoder_optimizer = optim.SGD(decoder.parameters(), lr=learning_rate)
+    scheduler_encoder = lr_scheduler.MultiStepLR(
+        encoder_optimizer, milestones=[round(n_iters*x) for x in [0.47, 1]],
+        gamma=0.1
+    )
+    scheduler_decoder = lr_scheduler.MultiStepLR(
+        decoder_optimizer, milestones=[round(n_iters*x) for x in [0.47, 1]],
+        gamma=0.1
+    )
+
+    scheduler_encoder.last_epoch = n_iters
+    scheduler_decoder.last_epoch = n_iters
+
+
     training_pairs_str = [random.choice(pairs_train)
                       for i in range(n_iters)]
     training_pairs = [tensorsFromPair(pr)
@@ -341,6 +364,8 @@ def trainIters(encoder, decoder, pairs_train, pairs_eval, n_iters, print_every=1
             plot_loss_avg = plot_loss_total / plot_every
             plot_losses.append(plot_loss_avg)
             plot_loss_total = 0
+            scheduler_encoder.step()
+            scheduler_decoder.step()
 
     showPlot(plot_losses)
     torch.save(best_model_wts_enc, "%s/weights/enc_full.pt" % PATH)
@@ -454,16 +479,4 @@ if __name__ == "__main__":
     attn_decoder1 = AttnDecoderRNN(hidden_size, output_lang.n_words, dropout_p=0.1).to(device)
 
     trainIters(encoder1, attn_decoder1, pairs_train, pairs_eval, 350000, print_every=5000)
-    # evaluateRandomly(encoder1, attn_decoder1)
-
-    # output_words, attentions = evaluate(
-    # encoder1, attn_decoder1, "je suis trop froid .")
-    # plt.matshow(attentions.numpy())
-
-    # evaluateAndShowAttention("elle a cinq ans de moins que moi .")
-
-    # evaluateAndShowAttention("elle est trop petit .")
-
-    # evaluateAndShowAttention("je ne crains pas de mourir .")
-
-    # evaluateAndShowAttention("c est un jeune directeur plein de talent .")
+    
