@@ -11,7 +11,7 @@ def login():
 
         return """
                 <h1>French to English Translator</h1><p>This site is a prototype API for
-                French to English Machine Translation. Pleasee note that the sentences 
+                French to English Machine Translation. Please note that the sentences 
                 must not exceed 8 words.</p>
                 <form method="POST">
                 <h3>Please Enter The Sentence:</h3>
