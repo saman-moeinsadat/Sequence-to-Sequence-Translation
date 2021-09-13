@@ -90,7 +90,7 @@ def readLangs(lang1, lang2, reverse=False):
     return input_lang, output_lang, pairs
 
 
-MAX_LENGTH = 10
+MAX_LENGTH = 8
 
 eng_prefixes = (
     "i am ", "i m ",
@@ -104,8 +104,8 @@ eng_prefixes = (
 
 def filterPair(p):
     return len(p[0].split(' ')) < MAX_LENGTH and \
-        len(p[1].split(' ')) < MAX_LENGTH and \
-        p[1].startswith(eng_prefixes)
+        len(p[1].split(' ')) < MAX_LENGTH 
+        # p[1].startswith(eng_prefixes)
 
  
 
@@ -310,17 +310,17 @@ def trainIters(
 
     encoder_optimizer = optim.SGD(encoder.parameters(), lr=learning_rate)
     decoder_optimizer = optim.SGD(decoder.parameters(), lr=learning_rate)
-    scheduler_encoder = lr_scheduler.MultiStepLR(
-        encoder_optimizer, milestones=[round(n_iters*x) for x in [0.47, 1]],
-        gamma=0.1
-    )
-    scheduler_decoder = lr_scheduler.MultiStepLR(
-        decoder_optimizer, milestones=[round(n_iters*x) for x in [0.47, 1]],
-        gamma=0.1
-    )
+    # scheduler_encoder = lr_scheduler.MultiStepLR(
+    #     encoder_optimizer, milestones=[round(n_iters*x) for x in [0.47, 1]],
+    #     gamma=0.1
+    # )
+    # scheduler_decoder = lr_scheduler.MultiStepLR(
+    #     decoder_optimizer, milestones=[round(n_iters*x) for x in [0.47, 1]],
+    #     gamma=0.1
+    # )
 
-    scheduler_encoder.last_epoch = n_iters
-    scheduler_decoder.last_epoch = n_iters
+    # scheduler_encoder.last_epoch = n_iters
+    # scheduler_decoder.last_epoch = n_iters
 
 
     training_pairs_str = [random.choice(pairs_train)
@@ -365,8 +365,8 @@ def trainIters(
             plot_loss_avg = plot_loss_total / plot_every
             plot_losses.append(plot_loss_avg)
             plot_loss_total = 0
-            scheduler_encoder.step()
-            scheduler_decoder.step()
+            # scheduler_encoder.step()
+            # scheduler_decoder.step()
 
     showPlot(plot_losses)
     torch.save(best_model_wts_enc, "%s/weights/enc_full.pt" % PATH)
