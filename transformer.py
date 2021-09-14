@@ -94,9 +94,15 @@ class Seq2SeqTransformer(nn.Module):
                 tgt_padding_mask: Tensor,
                 memory_key_padding_mask: Tensor):
         src_emb = self.positional_encoding(self.src_tok_emb(src))
+        # print("-----------------")
+        # print(src_emb)
+        # print("-----------------")
         tgt_emb = self.positional_encoding(self.tgt_tok_emb(trg))
         outs = self.transformer(src_emb, tgt_emb, src_mask, tgt_mask, None,
                                 src_padding_mask, tgt_padding_mask, memory_key_padding_mask)
+        # print("-----------------")
+        # print(self.generator(outs))
+
         return self.generator(outs)
 
     def encode(self, src: Tensor, src_mask: Tensor):
@@ -159,15 +165,21 @@ def train_epoch(model, optimizer):
         src = src.to(DEVICE)
         tgt = tgt.to(DEVICE)
 
+        # print(tgt.shape)
+
         tgt_input = tgt[:-1, :]
+        # print(tgt_input.shape)
 
         src_mask, tgt_mask, src_padding_mask, tgt_padding_mask = create_mask(src, tgt_input)
 
         logits = model(src, tgt_input, src_mask, tgt_mask,src_padding_mask, tgt_padding_mask, src_padding_mask)
+        # print(logits)
 
         optimizer.zero_grad()
 
         tgt_out = tgt[1:, :]
+        # print(tgt_out.shape)
+        # print("--------------------------------")
         loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tgt_out.reshape(-1))
         loss.backward()
 
@@ -238,25 +250,36 @@ if __name__ == "__main__":
     torch.manual_seed(0)
 
     EMB_SIZE = 512
-    NHEAD = 8
+    NHEAD = 1
     FFN_HID_DIM = 512
     BATCH_SIZE = 128
-    NUM_ENCODER_LAYERS = 3
-    NUM_DECODER_LAYERS = 3
+    NUM_ENCODER_LAYERS = 1
+    NUM_DECODER_LAYERS = 1
 
     token_transform = {}
     vocab_transform = {}
+
+
+    token_transform[SRC_LANGUAGE] = get_tokenizer('spacy', language='de_core_news_sm')
+    token_transform[TGT_LANGUAGE] = get_tokenizer('spacy', language='en_core_web_sm')
+
 
     for ln in [SRC_LANGUAGE, TGT_LANGUAGE]:
         # Training data Iterator
         train_iter = Multi30k(split='train', language_pair=(SRC_LANGUAGE, TGT_LANGUAGE))
         # Create torchtext's Vocab object
-        vocab_transform[ln] = build_vocab_from_iterator(yield_tokens(train_iter, ln),
-                                                    min_freq=1,
-                                                    specials=special_symbols,
-                                                    special_first=True)
+        vocab_transform[ln] = build_vocab_from_iterator(
+            yield_tokens(train_iter, ln),
+            min_freq=1,
+            specials=special_symbols,
+            special_first=True
+        )
+                                        
     for ln in [SRC_LANGUAGE, TGT_LANGUAGE]:
         vocab_transform[ln].set_default_index(UNK_IDX)
+    
+
+    # print(vocab_transform[TGT_LANGUAGE].__contains__('malfunction'))
     
     SRC_VOCAB_SIZE = len(vocab_transform[SRC_LANGUAGE])
     TGT_VOCAB_SIZE = len(vocab_transform[TGT_LANGUAGE])
@@ -289,7 +312,7 @@ if __name__ == "__main__":
         val_loss = evaluate(transformer)
         print((f"Epoch: {epoch}, Train loss: {train_loss:.3f}, Val loss: {val_loss:.3f}, "f"Epoch time = {(end_time - start_time):.3f}s"))
 
-    print(translate(transformer, "Eine Gruppe von Menschen steht vor einem Iglu ."))
+    # print(translate(transformer, "Eine Gruppe von Menschen steht vor einem Iglu ."))
 
 
 
