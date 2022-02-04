@@ -7,7 +7,7 @@
 *.pyc
 *.txt
 *.pt
-
+.data/Multi30k
 # Packages #
 ############
 # it's better to unpack these files and commit the raw source
