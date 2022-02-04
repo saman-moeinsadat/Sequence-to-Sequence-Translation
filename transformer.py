@@ -295,7 +295,8 @@ if __name__ == "__main__":
 
     loss_fn = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
 
-    optimizer = torch.optim.Adam(transformer.parameters(), lr=0.0001, betas=(0.9, 0.98), eps=1e-9)
+    optimizer = torch.optim.Adam(transformer.parameters(), lr=0.0000001,\
+        betas=(0.9, 0.98), eps=1e-10)
 
     text_transform = {}
     for ln in [SRC_LANGUAGE, TGT_LANGUAGE]:
